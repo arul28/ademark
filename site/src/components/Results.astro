@@ -114,13 +114,12 @@ const groupStart = new Set(METRICS.filter((m, i) => i === 0 || METRICS[i - 1].ca
                   <button data-sort="overview" aria-label="Order by tests led">#</button>
                 </th>
                 <th class="who" aria-sort="none">
-                  <button data-sort="name" aria-label="Sort by name">ADE</button>
+                  <button data-sort="name" aria-label="ADE, sort by name">ADE</button>
                 </th>
                 {METRICS.map((m) => (
                   <th class:list={{ gs: groupStart.has(m.key) }} aria-sort="none">
-                    <button data-sort={m.key} aria-label={`Sort by ${m.short}`}>
-                      <span>{m.short}</span>
-                      <em>{unitLabel[m.unit]}</em>
+                    <button data-sort={m.key} aria-label={`${m.short} ${unitLabel[m.unit]}, sort`}>
+                      <span>{m.short}</span>{" "}<em>{unitLabel[m.unit]}</em>
                     </button>
                   </th>
                 ))}

@@ -1,89 +1,289 @@
 ---
+// The hero as a printed, scanned sheet: paper grain, mottled ink with rough edges, the bench mark as a field of
+// halftone dots and the title in one line edge to edge. The rest of the page stays plain, so the hero reads as
+// its own sheet.
+import Mark from "./Mark.astro";
 import { REQUEST_ADE_URL } from "../data/links";
-import { PASS } from "../data/results";
+import { ADES } from "../data/results";
+
+// The apps under the sentence that names them, in alphabetical order, as the rest of the site draws their marks.
+const apps = [...ADES].sort((a, b) => a.name.localeCompare(b.name));
 ---
-<section class="hero" data-hero>
-  <canvas class="field" aria-hidden="true"></canvas>
-  <div class="wrap content">
-    <h1>Every ADE, measured.</h1>
-    <p class="lede">Test by test on one Mac, so you can pick the one that fits how you work.</p>
-    <div class="actions">
-      <a class="btn btn--primary" href="#results">
-        See results
-        <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M6 1v10M2 7l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.6" /></svg>
-      </a>
-      <a class="btn" href={REQUEST_ADE_URL}>
-        <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z" /></svg>
-        Request an ADE
-      </a>
+<section class="poster" data-hero>
+  <!-- Print textures. "ink" speckles and roughens whatever it is applied to; "paper" is the sheet's grain. -->
+  <svg class="defs" aria-hidden="true" width="0" height="0">
+    <!--
+      Ink on paper, in three parts:
+      1. Pores: fine holes where the paper did not take ink. They gather where the clump noise is high, so some areas
+         print solid and others porous, instead of an even salt.
+      2. Density: a slow variation in how much ink the press put down, kept shallow so it reads as tone, not fog.
+      3. Edges: a fine, ragged displacement, so no edge is a clean vector line.
+    -->
+    <filter id="ink" x="-2%" y="-2%" width="104%" height="104%" color-interpolation-filters="sRGB">
+      <!-- Both noises are made opaque first: the sum of two translucent layers would come back as their average. -->
+      <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="4" result="fine-raw" />
+      <feColorMatrix in="fine-raw" type="matrix" values="1 0 0 0 0  1 0 0 0 0  1 0 0 0 0  0 0 0 0 1" result="fine" />
+      <feTurbulence type="fractalNoise" baseFrequency="0.05" numOctaves="2" seed="17" result="clump-raw" />
+      <feColorMatrix in="clump-raw" type="matrix" values="1 0 0 0 0  1 0 0 0 0  1 0 0 0 0  0 0 0 0 1" result="clump" />
+      <feComposite in="fine" in2="clump" operator="arithmetic" k1="0" k2="0.6" k3="0.36" k4="0.04" result="pore-field" />
+      <feColorMatrix in="pore-field" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  -10.67 0 0 0 7.45" result="pores" />
+      <feTurbulence type="fractalNoise" baseFrequency="0.016" numOctaves="2" seed="11" result="mottle" />
+      <feColorMatrix in="mottle" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  -0.55 0 0 0 1.32" result="density" />
+      <feComposite in="pores" in2="density" operator="arithmetic" k1="1" k2="0" k3="0" k4="0" result="cover" />
+      <feComposite in="SourceGraphic" in2="cover" operator="in" result="printed" />
+      <feTurbulence type="fractalNoise" baseFrequency="0.42" numOctaves="2" seed="2" result="warp" />
+      <feDisplacementMap in="printed" in2="warp" scale="1.7" xChannelSelector="R" yChannelSelector="G" />
+    </filter>
+    <!-- The same ink for small type on a narrow screen: pores keep their size in pixels, so there are fewer of them. -->
+    <filter id="ink-soft" x="-2%" y="-2%" width="104%" height="104%" color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="4" result="fine-raw" />
+      <feColorMatrix in="fine-raw" type="matrix" values="1 0 0 0 0  1 0 0 0 0  1 0 0 0 0  0 0 0 0 1" result="fine" />
+      <feTurbulence type="fractalNoise" baseFrequency="0.05" numOctaves="2" seed="17" result="clump-raw" />
+      <feColorMatrix in="clump-raw" type="matrix" values="1 0 0 0 0  1 0 0 0 0  1 0 0 0 0  0 0 0 0 1" result="clump" />
+      <feComposite in="fine" in2="clump" operator="arithmetic" k1="0" k2="0.6" k3="0.36" k4="0.04" result="pore-field" />
+      <feColorMatrix in="pore-field" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  -10.67 0 0 0 7.75" result="pores" />
+      <feComposite in="SourceGraphic" in2="pores" operator="in" result="printed" />
+      <feTurbulence type="fractalNoise" baseFrequency="0.42" numOctaves="2" seed="2" result="warp" />
+      <feDisplacementMap in="printed" in2="warp" scale="1.1" xChannelSelector="R" yChannelSelector="G" />
+    </filter>
+  </svg>
+
+
+  <div class="wrap sheet">
+
+    <div class="field rise" style="--i:0" data-field><canvas aria-hidden="true"></canvas></div>
+
+    <div class="title-box">
+      <h1 class="title" data-title>ADEs, measured.</h1>
     </div>
-    <p class="stamp small">First results, {PASS.published}</p>
+
+    <div class="body">
+      <div class="left">
+        <p class="sub rise" style="--i:3">The open ADE benchmark</p>
+        <p class="lede rise" style="--i:4">The apps you run coding agents in, tested side by side.<br class="break" /> Pick the one that fits how you work.</p>
+        <ul class="apps rise" style="--i:5" aria-label="The apps tested">
+          {apps.map((a) => (
+            <li><Mark app={a} size={22} /><span class="name">{a.name}</span></li>
+          ))}
+        </ul>
+      </div>
+      <div class="actions rise" style="--i:5">
+        <a class="btn btn--primary" href="#results">
+          See results
+          <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M6 1v10M2 7l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.6" /></svg>
+        </a>
+        <a class="btn" href={REQUEST_ADE_URL}>Request an ADE</a>
+      </div>
+    </div>
   </div>
 </section>
 
 <script>
-  import { mountOrb } from "../scripts/orb";
+  import { fitTitle, mountPoster } from "../scripts/poster";
 
-  const hero = document.querySelector<HTMLElement>("[data-hero]");
-  const canvas = hero?.querySelector<HTMLCanvasElement>("canvas");
-  const title = hero?.querySelector<HTMLElement>("h1");
-  if (hero && canvas && title) document.fonts.ready.then(() => mountOrb(canvas, hero, title));
+  const host = document.querySelector<HTMLElement>("[data-hero]");
+  const field = host?.querySelector<HTMLElement>("[data-field]");
+  const canvas = field?.querySelector("canvas");
+  const title = host?.querySelector<HTMLElement>("[data-title]");
+  if (host && field && canvas && title) {
+    document.fonts.load(`800 160px "Host Grotesk Variable"`).then(() => {
+      fitTitle(title);
+      title.classList.add("in");
+      mountPoster(canvas, field);
+    });
+  }
 </script>
 
 <style>
-  .hero {
+  .poster {
     position: relative;
     overflow: hidden;
-    height: clamp(620px, calc(100svh - 73px), 940px);
+    isolation: isolate;
+    /* Exactly the screen under the nav: the dot field takes whatever height the words leave. */
     display: flex;
-    align-items: center;
+    flex-direction: column;
+    height: calc(100svh - 73px);
+    min-height: 600px;
   }
-  .field {
+  /* Paper: fine grain and slow fibre, multiplied on the light sheet and screened on the dark one. */
+  .poster::before {
+    content: "";
     position: absolute;
     inset: 0;
+    z-index: 2;
     pointer-events: none;
+    /* Three layers of paper: rare flecks pressed into the sheet, long thin fibres, and the fine grain. */
+    background-image:
+      url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='512' height='512'><filter id='f'><feTurbulence type='fractalNoise' baseFrequency='0.55' numOctaves='1' seed='9' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 26 -21.6'/></filter><rect width='100%' height='100%' filter='url(%23f)'/></svg>"),
+      url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='512' height='512'><filter id='b'><feTurbulence type='turbulence' baseFrequency='0.006 0.11' numOctaves='2' seed='5' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1.8 -1.12'/></filter><rect width='100%' height='100%' filter='url(%23b)'/></svg>"),
+      url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='256' height='256'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 -0.35'/></filter><rect width='100%' height='100%' filter='url(%23g)'/></svg>");
+    background-size: 512px 512px, 512px 512px, 256px 256px;
+    mix-blend-mode: multiply;
+    opacity: 0.32;
+    /* The sheet does not end on a line: its grain thins out over the last part of the hero. */
+    mask-image: linear-gradient(to bottom, #000 62%, transparent);
   }
-  .content {
+  @media (prefers-color-scheme: dark) {
+    .poster::before {
+      filter: invert(1);
+      mix-blend-mode: screen;
+      opacity: 0.12;
+    }
+  }
+  .defs {
+    position: absolute;
+  }
+
+
+  .sheet {
+    position: relative;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    padding-top: 36px;
+    padding-bottom: 56px;
+  }
+
+  .field {
+    position: relative;
+    flex: 1 1 auto;
+    min-height: 140px;
+    filter: url(#ink);
+  }
+  .field canvas {
+    position: absolute;
+    inset: 0;
+    display: block;
+  }
+
+  /* One line, edge to edge: the script sets the size so the line fills the grid exactly. */
+  .title-box {
     position: relative;
     z-index: 1;
+    margin-top: -0.04em;
   }
-  h1 {
+  .title {
+    display: inline-block;
     margin: 0;
-    max-width: 860px;
-    font-family: var(--font-dot);
-    font-weight: 900;
-    font-size: clamp(52px, 6.6vw, 96px);
-    line-height: 0.92;
+    font: 800 168px / 0.82 var(--font-sans);
+    letter-spacing: -0.055em;
+    white-space: nowrap;
+    color: var(--color-text);
+    filter: url(#ink);
+    clip-path: inset(100% 0 0 0);
+  }
+  .title:global(.in) {
+    clip-path: inset(-10% -2% -10% -2%);
+    transition: clip-path 640ms cubic-bezier(0.23, 1, 0.32, 1) 120ms;
+  }
+
+  /* The row of marks and the buttons end on one line, the foot of the sheet. */
+  .body {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: var(--col-gap);
+    margin-top: 40px;
+  }
+  .sub {
+    margin: 0;
+    font: 700 44px / 1 var(--font-sans);
     letter-spacing: -0.035em;
+    filter: url(#ink);
   }
   .lede {
-    max-width: 588px;
-    margin: 32px 0 0;
-    font: 400 24px/32px var(--font-sans);
+    margin: 16px 0 0;
+    font: 400 20px / 28px var(--font-sans);
+    color: var(--color-text-muted);
+    text-wrap: pretty;
   }
-  .actions {
+
+  /* The apps tested, under the sentence that names them: their marks in one ink, printed like the rest of the
+     sheet. The names are there for screen readers. */
+  .apps {
     display: flex;
     flex-wrap: wrap;
+    align-items: center;
+    gap: 14px 20px;
+    margin: 28px 0 0;
+    padding: 0;
+    list-style: none;
+    filter: url(#ink);
+  }
+  .apps li {
+    display: flex;
+  }
+  .apps :global(.mark) {
+    width: 22px;
+    height: 22px;
+    opacity: 0.6;
+  }
+  .apps .name {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  .actions {
+    display: flex;
     gap: 12px;
-    margin-top: 40px;
   }
   .actions .btn {
     height: 48px;
   }
-  .stamp {
-    margin: 20px 0 0;
-  }
+
   @media (max-width: 900px) {
-    .hero {
-      align-items: flex-end;
-      padding-bottom: 72px;
+    .poster {
+      height: auto;
+      min-height: 0;
+    }
+    .field,
+    .title,
+    .sub,
+    .apps {
+      filter: url(#ink-soft);
+    }
+    .apps {
+      gap: 12px 16px;
+      margin-top: 24px;
+    }
+    .sheet {
+      padding-top: 32px;
     }
     .field {
-      opacity: 0.45;
+      flex: none;
+      height: 200px;
+    }
+    .title {
+      font-size: 19vw;
+      white-space: normal;
+      line-height: 0.86;
+    }
+    .body {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 28px;
+    }
+    .break {
+      display: none;
+    }
+    .sub {
+      font-size: 32px;
     }
     .lede {
-      font-size: 20px;
-      line-height: 28px;
+      font-size: 18px;
+      line-height: 26px;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .title,
+    .title:global(.in) {
+      clip-path: none;
+      transition: none;
     }
   }
 </style>

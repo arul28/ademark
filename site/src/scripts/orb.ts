@@ -8,8 +8,8 @@ const TILT = 0.38;
 const SPIN = 0.07; // radians per second at rest
 // Light ground: small dots are pale, big dots dark. Dark ground (system setting): the ramp turns over.
 const SCHEMES = {
-  light: { lens: "#b5b5b5", small: 201, big: 34, halo: "10,10,10", haloAlpha: 0.06 },
-  dark: { lens: "#4a4a4a", small: 70, big: 226, halo: "255,255,255", haloAlpha: 0.05 },
+  light: { lens: "#b5b5b5", small: 201, big: 34 },
+  dark: { lens: "#4a4a4a", small: 70, big: 226 },
 };
 const darkQuery = window.matchMedia("(prefers-color-scheme: dark)");
 const scheme = () => (darkQuery.matches ? SCHEMES.dark : SCHEMES.light);
@@ -141,6 +141,8 @@ export function mountOrb(canvas: HTMLCanvasElement, host: HTMLElement, text: HTM
   }
 
   function draw(now: number): void {
+    // A hidden host has no size; there is nothing to draw until it shows.
+    if (!width || !height) return;
     const dt = Math.min(0.05, (now - lastFrame) / 1000);
     lastFrame = now;
     if (!reduceMotion && !drag.active) {
@@ -167,12 +169,7 @@ export function mountOrb(canvas: HTMLCanvasElement, host: HTMLElement, text: HTM
     const lens = 140;
 
     ctx.clearRect(0, 0, width, height);
-    const halo = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius * 1.3);
     const colors = scheme();
-    halo.addColorStop(0.35, `rgba(${colors.halo},${colors.haloAlpha})`);
-    halo.addColorStop(1, `rgba(${colors.halo},0)`);
-    ctx.fillStyle = halo;
-    ctx.fillRect(0, 0, width, height);
 
     const grays: Path2D[] = Array.from({ length: BUCKETS }, () => new Path2D());
     const pink = new Path2D();

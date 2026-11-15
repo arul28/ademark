@@ -1,8 +1,10 @@
 ---
 import "../styles/global.css";
-import dotoFont from "@fontsource-variable/doto/files/doto-latin-wght-normal.woff2?url";
+// The hero's title and text are Host Grotesk, and the title waits for it, so it is the one font worth preloading.
+import heroFont from "@fontsource-variable/host-grotesk/files/host-grotesk-latin-wght-normal.woff2?url";
 import Nav from "../components/Nav.astro";
 import Hero from "../components/Hero.astro";
+import HeroUnfold from "../components/HeroUnfold.astro";
 import Results from "../components/Results.astro";
 import Compare from "../components/Compare.astro";
 import Report from "../components/Report.astro";
@@ -13,8 +15,8 @@ import Footer from "../components/Footer.astro";
 import { X_HANDLE } from "../data/links";
 
 const url = "https://ademark.dev/";
-const title = "ADEMark: every ADE, measured. The open ADE benchmark";
-const description = "First results of the open ADE benchmark. The apps you run coding agents in, measured test by test on one Mac for launch speed, memory, tokens and orchestration.";
+const title = "ADEMark: ADEs, measured. The open ADE benchmark";
+const description = "First results of the open ADE benchmark. The apps you run coding agents in, tested side by side for launch speed, memory, tokens and orchestration.";
 // A new file name for the results card, so X and other crawlers do not reuse the cached teaser card.
 const image = `${url}og-results.png`;
 const imageAlt = "ADEMark. Every ADE, measured. Test by test on one Mac, so you can pick the one that fits how you work. First results, 12 November 2026.";
@@ -51,7 +53,7 @@ const structuredData = {
     <meta name="description" content={description} />
     <link rel="canonical" href={url} />
     <meta name="robots" content="index, follow, max-image-preview:large" />
-    <link rel="preload" href={dotoFont} as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href={heroFont} as="font" type="font/woff2" crossorigin />
 
     <meta property="og:site_name" content="ADEMark" />
     <meta property="og:locale" content="en_US" />
@@ -82,7 +84,15 @@ const structuredData = {
   <body>
     <Nav />
     <main>
-      <Hero />
+      {import.meta.env.DEV ? (
+        <>
+          <div data-hero-option="poster"><Hero /></div>
+          <div data-hero-option="unfold" hidden><HeroUnfold /></div>
+          <script is:inline set:html={`const o = new URLSearchParams(location.search).get("hero"); if (o) document.querySelectorAll("[data-hero-option]").forEach((d) => (d.hidden = d.dataset.heroOption !== o));`} />
+        </>
+      ) : (
+        <Hero />
+      )}
       <Results />
       <Compare />
       <Report />

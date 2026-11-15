@@ -1,0 +1,111 @@
+---
+// The title runs the full width as halftone, unfolded out of the bench mark on load. The real h1 keeps the
+// layout and the text for reading; it is transparent and the dots take its place.
+import { REQUEST_ADE_URL } from "../data/links";
+---
+<section class="hero" data-hero-unfold>
+  <canvas aria-hidden="true"></canvas>
+  <div class="wrap">
+    <h1 class="title">ADEs, measured.</h1>
+    <div class="below">
+      <p class="lede rise" style="--i:14">The apps you run coding agents in, tested side by side.<br class="break" /> Pick the one that fits how you work.</p>
+      <div class="actions rise" style="--i:15">
+        <a class="btn btn--primary" href="#results">
+          See results
+          <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M6 1v10M2 7l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.6" /></svg>
+        </a>
+        <a class="btn" href={REQUEST_ADE_URL}>Request an ADE</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+  import { mountUnfold } from "../scripts/unfold";
+
+  const host = document.querySelector<HTMLElement>("[data-hero-unfold]");
+  const canvas = host?.querySelector("canvas");
+  const title = host?.querySelector<HTMLElement>("h1");
+  if (host && canvas && title) document.fonts.load(`800 200px "Host Grotesk Variable"`).then(() => mountUnfold(canvas, host, title));
+</script>
+
+<style>
+  .hero {
+    position: relative;
+    display: flex;
+    height: calc(100svh - 73px);
+    min-height: 620px;
+    overflow: hidden;
+    touch-action: pan-y;
+  }
+  canvas {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+  .wrap {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    /* Title and words stay one group at any height, so a tall 2K screen does not open a hole between them. */
+    gap: clamp(56px, 9vh, 120px);
+    padding-top: 48px;
+    padding-bottom: 48px;
+  }
+  .title {
+    margin: 0;
+    font: 800 min(17.4vw, 252px) / 0.88 var(--font-sans);
+    letter-spacing: -0.025em;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+  }
+  /* The sentence and the buttons share one baseline: the last line of the one, the labels of the other. */
+  .below {
+    display: flex;
+    justify-content: space-between;
+    align-items: last baseline;
+    gap: var(--col-gap);
+  }
+  .lede {
+    max-width: 640px;
+    margin: 0;
+    font: 400 24px/32px var(--font-sans);
+    text-wrap: pretty;
+  }
+  .actions {
+    display: flex;
+    gap: 12px;
+  }
+  .actions .btn {
+    height: 48px;
+  }
+  @media (max-width: 900px) {
+    .hero {
+      height: auto;
+      min-height: 0;
+    }
+    .wrap {
+      padding-top: 48px;
+      padding-bottom: 64px;
+      gap: 40px;
+    }
+    .break {
+      display: none;
+    }
+    /* On a phone "measured." runs edge to edge of the text column. */
+    .title {
+      font-size: 19vw;
+    }
+    .below {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 28px;
+    }
+    .lede {
+      font-size: 20px;
+      line-height: 28px;
+    }
+  }
+</style>
