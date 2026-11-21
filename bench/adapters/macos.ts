@@ -1,5 +1,5 @@
 // macOS side effects shared by every adapter (ADES.md 1.1). Dry run logs the plan; a real run needs the `ademark` user.
-import { cpSync, existsSync, mkdirSync, readFileSync, realpathSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir, userInfo } from "node:os";
 import { basename, dirname, join } from "node:path";
 import type { AdapterContext, NativeProc } from "../core/contracts.ts";
@@ -385,6 +385,86 @@ export function trustClaudeFolder(ctx: AdapterContext, folder: string): void {
   const temp = `${config}.ademark-${process.pid}`;
   writeFileSync(temp, `${JSON.stringify(data, null, 2)}\n`, { mode: 0o600 });
   renameSync(temp, config);
+}
+
+// ADEs that make a git worktree per workspace (Superset under ~/.superset/worktrees) give every new repo root its own
+// trust prompt, and the folders appear only while the app runs, so account setup cannot list them. The adapter calls
+// this on a timer; `seen` keeps the per-folder .claude.json read to once per folder per process.
+export function trustClaudeTree(
+  ctx: AdapterContext,
+  roots: readonly string[],
+  seen: Set<string>,
+  maxDepth = 3,
+): void {
+  for (const root of roots) {
+    const dir = expandHome(root, ctx.home);
+    if (plan(ctx, "trustClaudeTree", [dir])) continue;
+    const walk = (folder: string, depth: number): void => {
+      if (depth >= maxDepth) return;
+      let entries;
+      try {
+        entries = readdirSync(folder, { withFileTypes: true });
+      } catch {
+        return;
+      }
+      for (const entry of entries) {
+        if (!entry.isDirectory() || entry.isSymbolicLink()) continue;
+        const child = join(folder, entry.name);
+        if (!seen.has(child)) {
+          trustClaudeFolder(ctx, child);
+          seen.add(child);
+        }
+        walk(child, depth + 1);
+      }
+    };
+    walk(dir, 0);
+  }
+}
+
+// The env keys an adapter may write into ~/.claude/settings.json for a block (Superset's replay URL, 2026-11-21).
+// The run loop clears them before every block's reset, so a crashed block cannot leak them into the next ADE.
+export const CLAUDE_SETTINGS_ENV_KEYS = ["ANTHROPIC_BASE_URL", "OPENAI_BASE_URL"] as const;
+
+// ~/.claude/settings.json "env" reaches every claude Claude Code starts, including the ones an ADE spawns inside a
+// terminal whose own environment it filters (Superset 2.0.8 drops ANTHROPIC_BASE_URL, so Track A's replay URL gets
+// there only through this file). `managed` lists the keys this harness owns: each is set from `values`, or removed
+// when `values` has no entry, so a replay block cannot leak into the live tracks that follow it. With nothing to
+// change it is a no-op: it never creates the file for an empty cleanup.
+export function syncClaudeSettingsEnv(
+  ctx: AdapterContext,
+  managed: readonly string[],
+  values: Record<string, string>,
+): void {
+  const target = join(ctx.home, ".claude", "settings.json");
+  const summary = managed.map((key) => `${key}=${values[key] ?? "<unset>"}`).join(" ");
+  if (plan(ctx, "syncClaudeSettingsEnv", [target, summary])) return;
+  assertAdemarkUser();
+  const existed = existsSync(target);
+  const data = existed
+    ? (JSON.parse(readFileSync(target, "utf8")) as Record<string, unknown>)
+    : {};
+  const env = (data.env ?? {}) as Record<string, unknown>;
+  let changed = false;
+  for (const key of managed) {
+    const value = values[key];
+    if (value === undefined) {
+      if (key in env) {
+        delete env[key];
+        changed = true;
+      }
+    } else if (env[key] !== value) {
+      env[key] = value;
+      changed = true;
+    }
+  }
+  if (!changed) return;
+  if (Object.keys(env).length > 0 || data.env !== undefined) data.env = env;
+  mkdirSync(dirname(target), { recursive: true });
+  const temp = `${target}.ademark-${process.pid}`;
+  const mode = existed ? statSync(target).mode & 0o777 : 0o600;
+  writeFileSync(temp, `${JSON.stringify(data, null, 2)}\n`, { mode });
+  renameSync(temp, target);
+  ctx.log(`sync ${target}: ${summary}`);
 }
 
 // Sets top-level keys in an app's JSON settings file, keeping the rest. The app must be closed.
