@@ -36,6 +36,8 @@ enum SelfTest {
         testClockConversion(&report)
         testStats(&report)
         testCanPost(&report)
+        testInputSettle(&report)
+        testFrontmostWindow(&report)
         testFrameTime(&report)
         testLagRule(&report)
         testFramesFile(&report)
@@ -300,6 +302,47 @@ enum SelfTest {
         report.check("canPost false for another pid") { !canPost(frontmostPid: 42, target: 43) }
         report.check("canPost false without a frontmost app") { !canPost(frontmostPid: nil, target: 42) }
         report.check("canPost false for a stale frontmost pid") { !canPost(frontmostPid: 0, target: 42) }
+    }
+
+    private static func testInputSettle(_ report: inout SelfTestReport) {
+        // A clock that only moves when the wait sleeps, and a key that reaches the wanted state at a set time.
+        func settle(want: Bool, changeAtNs: UInt64?) -> (reached: Bool, sleptNs: UInt64) {
+            var clock: UInt64 = 0
+            let reached = InputSettle.wait(for: want, capNs: 250_000_000, pollNs: 1_000_000,
+                                           now: { clock }, sleep: { clock += $0 },
+                                           read: {
+                                               let changed = changeAtNs.map { clock >= $0 } ?? false
+                                               return changed ? want : !want
+                                           })
+            return (reached, clock)
+        }
+        report.check("settle returns at once when the key is already down, or already up") {
+            [true, false].allSatisfy { settle(want: $0, changeAtNs: 0) == (true, 0) }
+        }
+        report.check("settle polls until the key goes down, or up") {
+            [true, false].allSatisfy { settle(want: $0, changeAtNs: 7_000_000) == (true, 7_000_000) }
+        }
+        report.check("settle gives up at the cap for a key that never follows") {
+            [true, false].allSatisfy { settle(want: $0, changeAtNs: nil) == (false, 250_000_000) }
+        }
+    }
+
+    private static func testFrontmostWindow(_ report: inout SelfTestReport) {
+        let app = WindowSnapshot(windowID: 1, frame: CGRect(x: 80, y: 60, width: 1600, height: 1000))
+        let sharingControl = WindowSnapshot(windowID: 2, frame: CGRect(x: 96, y: 76, width: 66, height: 20))
+        let dialog = WindowSnapshot(windowID: 3, frame: CGRect(x: 500, y: 300, width: 420, height: 180))
+        report.check("the sharing control in front of the app window is passed over") {
+            WindowFinder.frontmost([sharingControl, app])?.windowID == 1
+        }
+        report.check("a dialog in front of the app window is still the front window") {
+            WindowFinder.frontmost([dialog, app])?.windowID == 3
+        }
+        report.check("a small window alone is the front window") {
+            WindowFinder.frontmost([sharingControl])?.windowID == 2
+        }
+        report.check("no window gives none") {
+            WindowFinder.frontmost([]) == nil
+        }
     }
 
     private static func testFrameTime(_ report: inout SelfTestReport) {
